@@ -358,6 +358,14 @@
 
   <h2 class="display" style="margin:32px 0 4px; font-size:21px; font-weight:700; border-top:2px solid var(--amber); padding-top:20px;">TENDENCIA NCR</h2>
 
+  <div class="filter-bar">
+    <span class="lbl">Periodo de esta sección:</span>
+    <input type="date" id="trendDateFrom" class="date-input">
+    <span style="color:var(--ink-soft); font-size:13px;">al</span>
+    <input type="date" id="trendDateTo" class="date-input">
+    <button class="chip" id="resetTrendPeriodo">Todo el periodo</button>
+  </div>
+
   <div class="filter-bar" id="trendPlantaBar">
     <span class="lbl">Planta:</span>
     <button class="chip active" data-tplanta="all">Todas</button>
@@ -754,6 +762,14 @@ function destroyPrefixed(prefix){
 let trendGran = 'week';
 let trendPlanta = 'all';
 let trendRazonChoice = null;
+let trendDateFrom = null;
+let trendDateTo = null;
+
+function trendBaseRecords(){
+  const from = trendDateFrom || GLOBAL_MIN_DATE;
+  const to = trendDateTo || GLOBAL_MAX_DATE;
+  return DATA.records.filter(r => r.fecha >= from && r.fecha <= to);
+}
 
 function trendActivePlantas(){
   return trendPlanta === 'all' ? Object.keys(PLANTA_KEY) : [trendPlanta];
@@ -803,7 +819,7 @@ function chartTrendTotal(){
   const plantas = trendActivePlantas();
   let allFechas = [];
   plantas.forEach(p=>{
-    const recs = baseRecords().filter(r=>r.planta===p);
+    const recs = trendBaseRecords().filter(r=>r.planta===p);
     allFechas = allFechas.concat(recs.map(r=>r.fecha));
     const safeId = 'trendTotal_' + p.replace(/[^a-zA-Z0-9]/g,'');
     const item = document.createElement('div');
@@ -838,7 +854,7 @@ function chartTrendTotal(){
 // Poblar el selector de defectos según la planta elegida en esta sección
 function populateTrendRazonSelect(){
   const plantas = trendActivePlantas();
-  const recs = baseRecords().filter(r=>plantas.includes(r.planta));
+  const recs = trendBaseRecords().filter(r=>plantas.includes(r.planta));
   const counts = {};
   recs.forEach(r=>{ counts[r.razon] = (counts[r.razon]||0)+1; });
   const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
@@ -864,8 +880,8 @@ function chartTrendRazon(){
   const plantas = trendActivePlantas();
   let allFechas = [];
   plantas.forEach(p=>{
-    const recs = baseRecords().filter(r=>r.planta===p && r.razon===trendRazonChoice);
-    const allRecsPlanta = baseRecords().filter(r=>r.planta===p);
+    const recs = trendBaseRecords().filter(r=>r.planta===p && r.razon===trendRazonChoice);
+    const allRecsPlanta = trendBaseRecords().filter(r=>r.planta===p);
     allFechas = allFechas.concat(allRecsPlanta.map(r=>r.fecha));
     const safeId = 'trendRazon_' + p.replace(/[^a-zA-Z0-9]/g,'');
     const item = document.createElement('div');
@@ -1061,6 +1077,28 @@ document.getElementById('resetPeriodo').addEventListener('click', ()=>{
   dateFromEl.value = GLOBAL_MIN_DATE;
   dateToEl.value = GLOBAL_MAX_DATE;
   applyDateFilter();
+});
+
+function applyTrendDateFilter(){
+  const fromEl = document.getElementById('trendDateFrom');
+  const toEl = document.getElementById('trendDateTo');
+  trendDateFrom = fromEl.value || GLOBAL_MIN_DATE;
+  trendDateTo = toEl.value || GLOBAL_MAX_DATE;
+  if(trendDateFrom > trendDateTo){ const tmp = trendDateFrom; trendDateFrom = trendDateTo; trendDateTo = tmp; fromEl.value = trendDateFrom; toEl.value = trendDateTo; }
+  chartTrendTotal();
+  chartTrendRazon();
+}
+
+const trendDateFromEl = document.getElementById('trendDateFrom');
+const trendDateToEl = document.getElementById('trendDateTo');
+trendDateFromEl.min = GLOBAL_MIN_DATE; trendDateFromEl.max = GLOBAL_MAX_DATE; trendDateFromEl.value = GLOBAL_MIN_DATE;
+trendDateToEl.min = GLOBAL_MIN_DATE; trendDateToEl.max = GLOBAL_MAX_DATE; trendDateToEl.value = GLOBAL_MAX_DATE;
+trendDateFromEl.addEventListener('change', applyTrendDateFilter);
+trendDateToEl.addEventListener('change', applyTrendDateFilter);
+document.getElementById('resetTrendPeriodo').addEventListener('click', ()=>{
+  trendDateFromEl.value = GLOBAL_MIN_DATE;
+  trendDateToEl.value = GLOBAL_MAX_DATE;
+  applyTrendDateFilter();
 });
 
 updatePeriodoSub();
