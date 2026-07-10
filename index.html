@@ -101,6 +101,9 @@
   .chip[data-planta="Tarimas y Contenedores (Juárez)"].active{ background:var(--juarez); border-color:var(--juarez);}
   .chip[data-planta="Custom Crates and Pallets (El Paso)"].active{ background:var(--elpaso); border-color:var(--elpaso);}
   .chip[data-planta="Tarimas Regias (Monterrey)"].active{ background:var(--monterrey); border-color:var(--monterrey);}
+  .chip[data-tplanta="Tarimas y Contenedores (Juárez)"].active{ background:var(--juarez); border-color:var(--juarez);}
+  .chip[data-tplanta="Custom Crates and Pallets (El Paso)"].active{ background:var(--elpaso); border-color:var(--elpaso);}
+  .chip[data-tplanta="Tarimas Regias (Monterrey)"].active{ background:var(--monterrey); border-color:var(--monterrey);}
 
   .grid{
     display:grid;
@@ -126,6 +129,25 @@
   .card div[style*="height"] canvas{ max-height:none; }
   .card.span2{ grid-column:span 2; }
   @media (max-width:900px){ .card.span2{ grid-column:span 1; } }
+
+  .trend-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:8px;
+  }
+  @media (max-width:900px){ .trend-grid{ grid-template-columns:1fr; } }
+  .trend-item{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px 6px;
+  }
+  .trend-item h4{
+    margin:0 0 6px;
+    font-size:12.5px;
+    font-weight:700;
+  }
+  .trend-item .chart-wrap{ height:200px; }
 
   table{ width:100%; border-collapse:collapse; font-size:13px; }
   thead th{
@@ -332,6 +354,42 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
+  </div>
+
+  <h2 class="display" style="margin:32px 0 4px; font-size:21px; font-weight:700; border-top:2px solid var(--amber); padding-top:20px;">TENDENCIA NCR</h2>
+
+  <div class="filter-bar" id="trendPlantaBar">
+    <span class="lbl">Planta:</span>
+    <button class="chip active" data-tplanta="all">Todas</button>
+    <button class="chip" data-tplanta="Tarimas y Contenedores (Juárez)">Tarimas y Contenedores</button>
+    <button class="chip" data-tplanta="Custom Crates and Pallets (El Paso)">Custom Crates and Pallets</button>
+    <button class="chip" data-tplanta="Tarimas Regias (Monterrey)">Tarimas Regias</button>
+  </div>
+
+  <div class="filter-bar" id="granBar">
+    <span class="lbl">Tipo de tendencia:</span>
+    <button class="chip active" data-gran="week">Semanal</button>
+    <button class="chip" data-gran="month">Mensual</button>
+    <button class="chip" data-gran="year">Anual</button>
+  </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <h3>7. Tendencia de NCR Total</h3>
+    <div class="hint">Evolución del total de NCRs en el tiempo, según la planta y el tipo de tendencia elegidos arriba</div>
+    <div class="hint" id="trendRange7" style="font-weight:700; color:var(--ink);"></div>
+    <div class="trend-grid" id="trendTotalGrid"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:2px;">
+      <div>
+        <h3 style="margin-bottom:2px;">8. Tendencia de NCR por Razón</h3>
+        <div class="hint" style="margin-bottom:0;">Elige un defecto para ver si aumenta o disminuye, según la planta y el tipo de tendencia elegidos arriba</div>
+      </div>
+      <select id="trendRazonSelect" class="date-input" style="min-width:220px;"></select>
+    </div>
+    <div class="hint" id="trendRange8" style="font-weight:700; color:var(--ink);"></div>
+    <div class="trend-grid" id="trendRazonGrid"></div>
   </div>
 
   <footer id="footerInfo">Generado a partir del registro de inspección de calidad · 219 NCRs · 01 Jun 2026 – 10 Jul 2026</footer>
@@ -687,6 +745,158 @@ function chartOperadorRazonPlanta(){
   });
 }
 
+function destroyPrefixed(prefix){
+  Object.keys(charts).forEach(k=>{
+    if(k.startsWith(prefix)){ charts[k].destroy(); delete charts[k]; }
+  });
+}
+
+let trendGran = 'week';
+let trendPlanta = 'all';
+let trendRazonChoice = null;
+
+function trendActivePlantas(){
+  return trendPlanta === 'all' ? Object.keys(PLANTA_KEY) : [trendPlanta];
+}
+
+function periodKey(dateStr, gran){
+  const d = new Date(dateStr+'T00:00:00');
+  if(gran === 'year') return String(d.getFullYear());
+  if(gran === 'month') return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const onejan = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil( (((d - onejan) / 86400000) + onejan.getDay()+1)/7 );
+  return d.getFullYear()+'-S'+String(week).padStart(2,'0');
+}
+
+const MESES_ABBR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function periodLabel(key, gran){
+  if(gran === 'year') return key;
+  if(gran === 'month'){
+    const [y,m] = key.split('-');
+    return MESES_ABBR[parseInt(m,10)-1] + " '" + y.slice(2);
+  }
+  const [y,w] = key.split('-S');
+  return 'Sem ' + parseInt(w,10) + " '" + y.slice(2);
+}
+
+function formatFechaLarga(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return d.getDate() + ' de ' + cap(MESES[d.getMonth()]) + ' de ' + d.getFullYear();
+}
+
+function updateTrendRangeLabel(elId, fechas){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(fechas.length === 0){ el.textContent = 'Sin datos en el periodo seleccionado.'; return; }
+  const sorted = fechas.slice().sort();
+  const min = sorted[0], max = sorted[sorted.length-1];
+  el.textContent = min === max
+    ? `Medido el ${formatFechaLarga(min)}`
+    : `Medido del ${formatFechaLarga(min)} al ${formatFechaLarga(max)}`;
+}
+
+// 7. Tendencia de NCR total (respeta planta y granularidad de esta sección)
+function chartTrendTotal(){
+  destroyPrefixed('trendTotal_');
+  const grid = document.getElementById('trendTotalGrid');
+  grid.innerHTML = '';
+  const plantas = trendActivePlantas();
+  let allFechas = [];
+  plantas.forEach(p=>{
+    const recs = baseRecords().filter(r=>r.planta===p);
+    allFechas = allFechas.concat(recs.map(r=>r.fecha));
+    const safeId = 'trendTotal_' + p.replace(/[^a-zA-Z0-9]/g,'');
+    const item = document.createElement('div');
+    item.className = 'trend-item';
+    item.innerHTML = `<h4 style="color:${PLANTA_KEY[p].color}">${PLANTA_KEY[p].short}</h4><div class="chart-wrap"><canvas id="${safeId}"></canvas></div>`;
+    grid.appendChild(item);
+
+    const periods = [...new Set(recs.map(r=>periodKey(r.fecha, trendGran)))].sort();
+    const counts = periods.map(pd => recs.filter(r=>periodKey(r.fecha, trendGran)===pd).length);
+    const labels = periods.map(pd=>periodLabel(pd, trendGran));
+
+    charts[safeId] = new Chart(document.getElementById(safeId), {
+      type:'line',
+      data:{ labels, datasets:[{ data:counts, borderColor:PLANTA_KEY[p].color, backgroundColor:PLANTA_KEY[p].color, tension:.3, fill:false, pointRadius:3 }] },
+      options:{
+        maintainAspectRatio:false,
+        layout:{padding:{top:24}},
+        plugins:{ legend:{display:false} },
+        scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{precision:0}}, x:{grid:{display:false}, ticks:{font:{size:10.5}, autoSkip:false, maxRotation:0, minRotation:0} } }
+      }
+    });
+  });
+  if(plantas.length === 1){
+    document.getElementById('trendTotalGrid').style.gridTemplateColumns = '1fr';
+    document.querySelector('#trendTotalGrid .chart-wrap').style.height = '320px';
+  } else {
+    document.getElementById('trendTotalGrid').style.gridTemplateColumns = '';
+  }
+  updateTrendRangeLabel('trendRange7', allFechas);
+}
+
+// Poblar el selector de defectos según la planta elegida en esta sección
+function populateTrendRazonSelect(){
+  const plantas = trendActivePlantas();
+  const recs = baseRecords().filter(r=>plantas.includes(r.planta));
+  const counts = {};
+  recs.forEach(r=>{ counts[r.razon] = (counts[r.razon]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  const sel = document.getElementById('trendRazonSelect');
+  const prevValue = trendRazonChoice;
+  sel.innerHTML = sorted.map(rz=>`<option value="${rz.replace(/"/g,'&quot;')}">${rz}</option>`).join('');
+  if(prevValue && sorted.includes(prevValue)){
+    sel.value = prevValue;
+    trendRazonChoice = prevValue;
+  } else {
+    trendRazonChoice = sorted[0] || null;
+    if(trendRazonChoice) sel.value = trendRazonChoice;
+  }
+}
+
+// 8. Tendencia de un defecto elegido (respeta planta y granularidad de esta sección)
+function chartTrendRazon(){
+  populateTrendRazonSelect();
+  destroyPrefixed('trendRazon_');
+  const grid = document.getElementById('trendRazonGrid');
+  grid.innerHTML = '';
+  if(!trendRazonChoice){ updateTrendRangeLabel('trendRange8', []); return; }
+  const plantas = trendActivePlantas();
+  let allFechas = [];
+  plantas.forEach(p=>{
+    const recs = baseRecords().filter(r=>r.planta===p && r.razon===trendRazonChoice);
+    const allRecsPlanta = baseRecords().filter(r=>r.planta===p);
+    allFechas = allFechas.concat(allRecsPlanta.map(r=>r.fecha));
+    const safeId = 'trendRazon_' + p.replace(/[^a-zA-Z0-9]/g,'');
+    const item = document.createElement('div');
+    item.className = 'trend-item';
+    item.innerHTML = `<h4 style="color:${PLANTA_KEY[p].color}">${PLANTA_KEY[p].short}</h4><div class="chart-wrap"><canvas id="${safeId}"></canvas></div>`;
+    grid.appendChild(item);
+
+    const periods = [...new Set(allRecsPlanta.map(r=>periodKey(r.fecha, trendGran)))].sort();
+    const counts = periods.map(pd => recs.filter(r=>periodKey(r.fecha, trendGran)===pd).length);
+    const labels = periods.map(pd=>periodLabel(pd, trendGran));
+
+    charts[safeId] = new Chart(document.getElementById(safeId), {
+      type:'line',
+      data:{ labels, datasets:[{ label: trendRazonChoice, data:counts, borderColor:PLANTA_KEY[p].color, backgroundColor:PLANTA_KEY[p].color, tension:.3, fill:false, pointRadius:3 }] },
+      options:{
+        maintainAspectRatio:false,
+        layout:{padding:{top:24}},
+        plugins:{ legend:{display:false} },
+        scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{precision:0}}, x:{grid:{display:false}, ticks:{font:{size:10.5}, autoSkip:false, maxRotation:0, minRotation:0} } }
+      }
+    });
+  });
+  if(plantas.length === 1){
+    document.getElementById('trendRazonGrid').style.gridTemplateColumns = '1fr';
+    document.querySelector('#trendRazonGrid .chart-wrap').style.height = '320px';
+  } else {
+    document.getElementById('trendRazonGrid').style.gridTemplateColumns = '';
+  }
+  updateTrendRangeLabel('trendRange8', allFechas);
+}
+
 function renderCharts(){
   destroyCharts();
   chartTotalPlanta();
@@ -695,6 +905,8 @@ function renderCharts(){
   chartRazonAreaPlanta();
   chartOperadorRazonPlanta();
   chartDispPlanta();
+  chartTrendTotal();
+  chartTrendRazon();
 }
 
 function countValidFotos(fotos){
@@ -790,6 +1002,31 @@ document.getElementById('filterBar').addEventListener('click', (e)=>{
   currentPlanta = btn.dataset.planta;
   renderCharts();
   renderTable();
+});
+
+document.getElementById('trendPlantaBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  document.querySelectorAll('#trendPlantaBar .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  trendPlanta = btn.dataset.tplanta;
+  chartTrendTotal();
+  chartTrendRazon();
+});
+
+document.getElementById('granBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  document.querySelectorAll('#granBar .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  trendGran = btn.dataset.gran;
+  chartTrendTotal();
+  chartTrendRazon();
+});
+
+document.getElementById('trendRazonSelect').addEventListener('change', (e)=>{
+  trendRazonChoice = e.target.value;
+  chartTrendRazon();
 });
 
 document.getElementById('search').addEventListener('input', renderTable);
