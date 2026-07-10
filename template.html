@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Semanal de NCRs — Revisión por la Dirección</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --card:#FFFFFF;
+    --ink:#26221D;
+    --ink-soft:#5B564D;
+    --line:#E3DDCF;
+    --juarez:#1B5E4F;
+    --juarez-soft:#DCEAE5;
+    --elpaso:#B5652D;
+    --elpaso-soft:#F2E2D2;
+    --monterrey:#3F4F8C;
+    --monterrey-soft:#DEE2F0;
+    --alert:#B0201C;
+    --alert-soft:#F5DEDD;
+    --ok:#2F7A4D;
+    --amber:#C98A1E;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height:1.45;
+  }
+  .display{ font-family:'Space Grotesk', 'Inter', sans-serif; }
+  .mono{ font-family:'IBM Plex Mono','SFMono-Regular',Menlo,monospace; }
+
+  header.top{
+    background: linear-gradient(135deg, #22231F 0%, #2E2B23 100%);
+    color:#F6F3EC;
+    padding:28px clamp(16px,4vw,48px) 46px;
+    border-bottom:4px solid var(--amber);
+  }
+  header.top .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-size:11px;
+    color:#D8CBAE;
+    font-weight:600;
+  }
+  header.top h1{
+    margin:6px 0 4px;
+    font-size:clamp(22px,3vw,32px);
+    font-weight:600;
+  }
+  header.top .sub{
+    color:#C9C1AE;
+    font-size:13.5px;
+  }
+  .wrap{ padding:20px clamp(16px,4vw,48px) 60px; max-width:1400px; margin:0 auto; }
+
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
+    margin:-20px auto 26px;
+    max-width:1400px;
+    padding:0 clamp(16px,4vw,48px);
+  }
+  .kpi{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    box-shadow:0 2px 10px rgba(38,34,29,.06);
+  }
+  .kpi .label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); font-weight:600;}
+  .kpi .value{ font-size:28px; font-weight:700; margin-top:4px; }
+  .kpi .value.juarez{ color:var(--juarez); }
+  .kpi .value.elpaso{ color:var(--elpaso); }
+  .kpi .value.monterrey{ color:var(--monterrey); }
+
+  .filter-bar{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    margin-bottom:22px;
+  }
+  .filter-bar span.lbl{ font-size:12px; color:var(--ink-soft); font-weight:600; margin-right:4px;}
+  .chip{
+    border:1px solid var(--line);
+    background:var(--card);
+    padding:7px 14px;
+    border-radius:999px;
+    font-size:13px;
+    cursor:pointer;
+    font-weight:600;
+    color:var(--ink-soft);
+    transition:all .15s ease;
+  }
+  .chip:hover{ border-color:var(--ink-soft); }
+  .chip.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .chip[data-planta="Tarimas y Contenedores (Juárez)"].active{ background:var(--juarez); border-color:var(--juarez);}
+  .chip[data-planta="Custom Crates and Pallets (El Paso)"].active{ background:var(--elpaso); border-color:var(--elpaso);}
+  .chip[data-planta="Tarimas Regias (Monterrey)"].active{ background:var(--monterrey); border-color:var(--monterrey);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:18px;
+    margin-bottom:18px;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px 12px;
+    box-shadow:0 2px 10px rgba(38,34,29,.05);
+  }
+  .card h3{
+    margin:0 0 2px;
+    font-size:15px;
+    font-weight:700;
+  }
+  .card .hint{ font-size:11.5px; color:var(--ink-soft); margin-bottom:10px; }
+  .card canvas{ max-height:280px; cursor:pointer; }
+  .card div[style*="height"] canvas{ max-height:none; }
+  .card.span2{ grid-column:span 2; }
+  @media (max-width:900px){ .card.span2{ grid-column:span 1; } }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  thead th{
+    text-align:left;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    border-bottom:2px solid var(--line);
+    padding:8px 8px;
+    position:sticky; top:0; background:var(--card);
+    cursor:pointer;
+    user-select:none;
+  }
+  thead th:hover{ color:var(--ink); }
+  tbody td{
+    padding:9px 8px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:hover{ background:#FBFAF6; }
+  .badge{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .badge.planta-juarez{ background:var(--juarez-soft); color:var(--juarez); }
+  .badge.planta-elpaso{ background:var(--elpaso-soft); color:var(--elpaso); }
+  .badge.planta-monterrey{ background:var(--monterrey-soft); color:var(--monterrey); }
+  .disp{ font-weight:700; font-size:12px; }
+  .disp.retrabajo{ color:var(--ok); }
+  .disp.scrap{ color:var(--alert); }
+  .disp.sorteo{ color:var(--amber); }
+  .disp.tal{ color:var(--monterrey); }
+
+  .photo-btn{
+    border:1px solid var(--line);
+    background:#F2EFE6;
+    border-radius:6px;
+    padding:4px 9px;
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--ink);
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .photo-btn:hover{ background:var(--amber); color:#fff; border-color:var(--amber); }
+  .photo-btn:disabled{ opacity:.35; cursor:default; }
+  .photo-btn:disabled:hover{ background:#F2EFE6; color:var(--ink); border-color:var(--line); }
+  .photo-btn.all-expired{ background:#F5DEDD; color:var(--alert); border-color:#E8C3C1; }
+  .photo-btn.all-expired:hover{ background:var(--alert); color:#fff; border-color:var(--alert); }
+
+  .table-wrap{ max-height:560px; overflow:auto; border:1px solid var(--line); border-radius:var(--radius); }
+
+  #search{
+    padding:8px 12px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    font-size:13px;
+    width:220px;
+    font-family:inherit;
+  }
+
+  .date-input{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:13px;
+    font-family:inherit;
+    background:var(--card);
+    color:var(--ink);
+  }
+
+  /* Lightbox */
+  .lightbox{
+    position:fixed; inset:0; background:rgba(20,17,12,.88);
+    display:none; align-items:center; justify-content:center;
+    z-index:100; padding:30px;
+  }
+  .lightbox.open{ display:flex; }
+  .lightbox-inner{
+    background:#1D1A15; border-radius:12px; max-width:min(900px,92vw); max-height:90vh;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .lightbox-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; color:#F6F3EC; font-size:13px;
+    border-bottom:1px solid #3A342A;
+  }
+  .lightbox-head button{
+    background:none; border:none; color:#F6F3EC; font-size:20px; cursor:pointer; line-height:1;
+  }
+  .lightbox-body{ overflow:auto; padding:16px; display:flex; flex-wrap:wrap; gap:12px; justify-content:center;}
+  .lightbox-body img{ max-width:100%; max-height:60vh; border-radius:6px; border:1px solid #3A342A; }
+  .lightbox-body .imgwrap{ display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .lightbox-body .imgwrap span{ color:#9E9788; font-size:11px; }
+
+  .empty-state{ padding:40px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  #detailModal .lightbox-inner{ background:#FFFFFF; color:var(--ink); }
+  #detailModal .lightbox-head{ background:#FFFFFF; color:var(--ink); border-bottom:1px solid var(--line); }
+  #detailModal .lightbox-head button{ color:var(--ink); }
+  #detailModal thead th{ background:#FFFFFF; }
+
+  .img-error-box{
+    width:200px; height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#2A251D; border:1px dashed #4A4030; border-radius:6px; color:#D9A94A; font-size:12px; text-align:center; gap:5px; padding:10px;
+  }
+  .img-error-box .sub{ color:#9E9788; font-size:10.5px; }
+
+  footer{ text-align:center; font-size:11px; color:var(--ink-soft); padding:20px 0 40px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 class="display">Reporte Semanal de NCRs — Inspección de Tarimas</h1>
+  <div class="sub" id="periodoSub">Periodo del __FECHA_MIN__ al __FECHA_MAX__ &nbsp;·&nbsp; __TOTAL__ NCRs registrados &nbsp;·&nbsp; 3 plantas</div>
+</header>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="wrap">
+
+  <div class="filter-bar" id="filterBar">
+    <span class="lbl">Planta:</span>
+    <button class="chip active" data-planta="all">Todas</button>
+    <button class="chip" data-planta="Tarimas y Contenedores (Juárez)">Tarimas y Contenedores</button>
+    <button class="chip" data-planta="Custom Crates and Pallets (El Paso)">Custom Crates and Pallets</button>
+    <button class="chip" data-planta="Tarimas Regias (Monterrey)">Tarimas Regias</button>
+  </div>
+
+  <div class="filter-bar">
+    <span class="lbl">Periodo:</span>
+    <input type="date" id="dateFrom" class="date-input">
+    <span style="color:var(--ink-soft); font-size:13px;">al</span>
+    <input type="date" id="dateTo" class="date-input">
+    <button class="chip" id="resetPeriodo">Todo el periodo</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>1. Total de NCRs</h3>
+      <div class="hint">Volumen total de no conformidades por planta en el periodo</div>
+      <canvas id="chartTotalPlanta"></canvas>
+    </div>
+    <div class="card span2">
+      <h3>2. NCRs por Razón de No Conformidad</h3>
+      <div class="hint">Desglose de cada razón de NCR registrada, coloreado por planta</div>
+      <div style="height:560px;"><canvas id="chartRazonPlanta"></canvas></div>
+    </div>
+    <div class="card span2">
+      <h3>3. Cantidad de NCRs por Área</h3>
+      <div class="hint">Distribución por área de proceso, coloreada por planta</div>
+      <div style="height:320px;"><canvas id="chartAreaPlanta"></canvas></div>
+    </div>
+    <div class="card span2">
+      <h3>4. Razón de NCRs por Área</h3>
+      <div class="hint">Usa el filtro de planta de arriba para enfocar en una planta — muestra qué razones ocurren en cada área (top 8 razones + "otras")</div>
+      <div style="height:340px;"><canvas id="chartRazonAreaPlanta"></canvas></div>
+    </div>
+    <div class="card span2">
+      <h3>5. NCRs por Operador Responsable y Razón</h3>
+      <div class="hint">Usa el filtro de planta de arriba — top 12 operadores por cantidad de NCR, coloreado por razón (top 8 + "otras")</div>
+      <div style="height:360px;"><canvas id="chartOperadorRazonPlanta"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>6. Disposición</h3>
+      <div class="hint">Cómo se resolvió cada no conformidad, por planta</div>
+      <canvas id="chartDispPlanta"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <div>
+        <h3 style="margin-bottom:2px;">Detalle de NCRs</h3>
+        <div class="hint" style="margin-bottom:0;">Click en "Ver fotos" para abrir la evidencia fotográfica</div>
+      </div>
+      <input id="search" placeholder="Buscar razón, área, proveedor…" />
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="idx">#</th>
+            <th data-key="ncr">NCR</th>
+            <th data-key="fecha">Fecha</th>
+            <th data-key="planta">Planta</th>
+            <th data-key="razon">Razón</th>
+            <th data-key="area">Área</th>
+            <th data-key="disposicion">Disposición</th>
+            <th data-key="cantidad">Cant.</th>
+            <th data-key="inspector">Inspector</th>
+            <th data-key="operador">Operador Responsable</th>
+            <th data-key="proveedor">Proveedor</th>
+            <th data-key="reportado_a">Firma de Enterado</th>
+            <th>Fotos</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer id="footerInfo">Generado a partir del registro de inspección de calidad · __TOTAL__ NCRs · __FECHA_MIN__ – __FECHA_MAX__</footer>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-inner">
+    <div class="lightbox-head">
+      <span id="lbTitle" class="mono"></span>
+      <button id="lbClose">&times;</button>
+    </div>
+    <div class="lightbox-body" id="lbBody"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="detailModal">
+  <div class="lightbox-inner" style="max-width:min(1100px,94vw);">
+    <div class="lightbox-head">
+      <span id="detailTitle" class="mono"></span>
+      <button id="detailClose">&times;</button>
+    </div>
+    <div class="lightbox-body" style="display:block; padding:0;">
+      <div class="table-wrap" style="max-height:65vh; border:none; border-radius:0;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>NCR</th><th>Fecha</th><th>Planta</th><th>Razón</th><th>Área</th><th>Disposición</th><th>Cant.</th><th>Inspector</th><th>Operador Responsable</th><th>Proveedor</th><th>Firma de Enterado</th><th>Fotos</th>
+            </tr>
+          </thead>
+          <tbody id="detailTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = __DATA_JSON__;
+
+const PLANTA_KEY = {
+  'Tarimas y Contenedores (Juárez)': {short:'Tarimas y Contenedores', wrap:['Tarimas y','Contenedores'], cls:'planta-juarez', color:'#1B5E4F'},
+  'Custom Crates and Pallets (El Paso)': {short:'Custom Crates and Pallets', wrap:['Custom Crates','and Pallets'], cls:'planta-elpaso', color:'#B5652D'},
+  'Tarimas Regias (Monterrey)': {short:'Tarimas Regias', wrap:['Tarimas','Regias'], cls:'planta-monterrey', color:'#3F4F8C'},
+};
+const PALETTE = ['#1B5E4F','#B5652D','#3F4F8C','#C98A1E','#7A4F9E','#2F7A4D','#B0201C','#6E6153','#4C8CA8','#9C6B3F'];
+function dispClass(d){
+  const s = (d||'').toLowerCase();
+  if(s.includes('retrabajo')) return 'retrabajo';
+  if(s.includes('scrap')) return 'scrap';
+  if(s.includes('sorteo')) return 'sorteo';
+  return 'tal';
+}
+
+const totalLabelsPlugin = {
+  id: 'totalLabels',
+  afterDatasetsDraw(chart){
+    const isHorizontal = chart.options.indexAxis === 'y';
+    const numCategories = chart.data.labels.length;
+    const lastDsIndex = chart.data.datasets.length - 1;
+    const lastMeta = chart.getDatasetMeta(lastDsIndex);
+    if(!lastMeta || !lastMeta.data) return;
+    const {ctx} = chart;
+    ctx.save();
+    ctx.fillStyle = '#26221D';
+    ctx.font = '700 11px Inter, sans-serif';
+    ctx.textAlign = isHorizontal ? 'left' : 'center';
+    ctx.textBaseline = isHorizontal ? 'middle' : 'bottom';
+    for(let i=0;i<numCategories;i++){
+      let total = 0;
+      chart.data.datasets.forEach((ds, dsIndex)=>{
+        const meta = chart.getDatasetMeta(dsIndex);
+        if(meta.hidden) return;
+        total += (ds.data[i] || 0);
+      });
+      if(total <= 0) continue;
+      const el = lastMeta.data[i];
+      if(!el) continue;
+      if(isHorizontal){
+        ctx.fillText(total, el.x + 6, el.y);
+      } else {
+        ctx.fillText(total, el.x, el.y - 6);
+      }
+    }
+    ctx.restore();
+  }
+};
+Chart.register(totalLabelsPlugin);
+
+let currentPlanta = 'all';
+let sortKey = 'fecha';
+let sortDir = -1;
+
+const allDatesSorted = [...new Set(DATA.records.map(r=>r.fecha))].sort();
+const GLOBAL_MIN_DATE = allDatesSorted[0];
+const GLOBAL_MAX_DATE = allDatesSorted[allDatesSorted.length-1];
+let dateFrom = GLOBAL_MIN_DATE;
+let dateTo = GLOBAL_MAX_DATE;
+
+function baseRecords(){
+  return DATA.records.filter(r => r.fecha >= dateFrom && r.fecha <= dateTo);
+}
+
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function formatPeriodo(fromStr, toStr){
+  const f = new Date(fromStr+'T00:00:00');
+  const t = new Date(toStr+'T00:00:00');
+  if(fromStr === toStr){
+    return `Periodo del ${f.getDate()} de ${cap(MESES[f.getMonth()])} de ${f.getFullYear()}`;
+  } else if(f.getFullYear()===t.getFullYear() && f.getMonth()===t.getMonth()){
+    return `Periodo del ${f.getDate()} al ${t.getDate()} de ${cap(MESES[f.getMonth()])}`;
+  } else if(f.getFullYear()===t.getFullYear()){
+    return `Periodo del ${f.getDate()} de ${cap(MESES[f.getMonth()])} al ${t.getDate()} de ${cap(MESES[t.getMonth()])}`;
+  }
+  return `Periodo del ${f.getDate()} de ${cap(MESES[f.getMonth()])} ${f.getFullYear()} al ${t.getDate()} de ${cap(MESES[t.getMonth()])} ${t.getFullYear()}`;
+}
+function updatePeriodoSub(){
+  const total = baseRecords().length;
+  document.getElementById('periodoSub').innerHTML = `${formatPeriodo(dateFrom,dateTo)} &nbsp;·&nbsp; ${total} NCRs registrados &nbsp;·&nbsp; 3 plantas`;
+}
+
+function filteredRecords(){
+  let recs = baseRecords();
+  if(currentPlanta !== 'all'){
+    recs = recs.filter(r => r.planta === currentPlanta);
+  }
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(q){
+    recs = recs.filter(r =>
+      (r.razon||'').toLowerCase().includes(q) ||
+      (r.area||'').toLowerCase().includes(q) ||
+      (r.proveedor||'').toLowerCase().includes(q) ||
+      (r.disposicion||'').toLowerCase().includes(q) ||
+      (r.inspector||'').toLowerCase().includes(q) ||
+      (r.operador||'').toLowerCase().includes(q) ||
+      (r.reportado_a||'').toLowerCase().includes(q)
+    );
+  }
+  return recs;
+}
+
+function renderKPIs(){
+  const recs = baseRecords();
+  const total = recs.length;
+  const counts = {};
+  recs.forEach(r=>{ counts[r.planta] = (counts[r.planta]||0)+1; });
+  const kpiRow = document.getElementById('kpiRow');
+  kpiRow.innerHTML = `
+    <div class="kpi"><div class="label">Total NCRs</div><div class="value">${total}</div></div>
+    <div class="kpi"><div class="label">Tarimas y Contenedores</div><div class="value juarez">${counts['Tarimas y Contenedores (Juárez)']||0}</div></div>
+    <div class="kpi"><div class="label">Custom Crates and Pallets</div><div class="value elpaso">${counts['Custom Crates and Pallets (El Paso)']||0}</div></div>
+    <div class="kpi"><div class="label">Tarimas Regias</div><div class="value monterrey">${counts['Tarimas Regias (Monterrey)']||0}</div></div>
+  `;
+}
+
+let charts = {};
+function destroyCharts(){ Object.values(charts).forEach(c=>c && c.destroy()); charts = {}; }
+
+function activePlantas(){
+  return currentPlanta === 'all' ? Object.keys(PLANTA_KEY) : [currentPlanta];
+}
+
+// 1. Total de NCRs por planta
+function chartTotalPlanta(){
+  const ctx = document.getElementById('chartTotalPlanta');
+  const plantas = activePlantas();
+  const counts = plantas.map(p => baseRecords().filter(r=>r.planta===p).length);
+  charts.totalPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap),
+      datasets:[{ data:counts, backgroundColor: plantas.map(p=>PLANTA_KEY[p].color), borderRadius:6, maxBarThickness:80 }]},
+    options:{
+      layout:{padding:{top:20}},
+      plugins:{legend:{display:false}},
+      scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}}, x:{grid:{display:false}} },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const p = plantas[els[0].index];
+        openDetailModal(PLANTA_KEY[p].short, baseRecords().filter(r=>r.planta===p));
+      }
+    }
+  });
+}
+
+// 6. Disposición por planta
+function chartDispPlanta(){
+  const ctx = document.getElementById('chartDispPlanta');
+  const plantas = activePlantas();
+  const recs = baseRecords().filter(r=>plantas.includes(r.planta));
+  const dispSet = [...new Set(recs.map(r=>r.disposicion))];
+  const colorMap = {retrabajo:'#2F7A4D', scrap:'#B0201C', sorteo:'#C98A1E'};
+  const datasets = dispSet.map(d=>({
+    label: d,
+    data: plantas.map(p => baseRecords().filter(r=>r.planta===p && r.disposicion===d).length),
+    backgroundColor: colorMap[dispClass(d)] || '#3F4F8C',
+    borderRadius:3,
+  }));
+  charts.dispPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap), datasets },
+    options:{
+      layout:{padding:{top:20}},
+      scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const p = plantas[els[0].index];
+        const disp = dispSet[els[0].datasetIndex];
+        openDetailModal(`${PLANTA_KEY[p].short} · ${disp}`, baseRecords().filter(r=>r.planta===p && r.disposicion===disp));
+      }
+    }
+  });
+}
+
+// 2. NCRs por razón, desglosado por planta (barra horizontal apilada)
+function chartRazonPlanta(){
+  const ctx = document.getElementById('chartRazonPlanta');
+  const plantas = activePlantas();
+  const recs = baseRecords().filter(r=>plantas.includes(r.planta));
+  const totals = {};
+  recs.forEach(r=>{ totals[r.razon] = (totals[r.razon]||0)+1; });
+  const razones = Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+  const datasets = plantas.map(p=>({
+    label: PLANTA_KEY[p].short,
+    data: razones.map(rz => recs.filter(r=>r.razon===rz && r.planta===p).length),
+    backgroundColor: PLANTA_KEY[p].color,
+  }));
+  charts.razonPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: razones, datasets },
+    options:{
+      indexAxis:'y',
+      maintainAspectRatio:false,
+      layout:{padding:{right:34}},
+      scales:{ x:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} }, y:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const razon = razones[els[0].index];
+        const p = plantas[els[0].datasetIndex];
+        openDetailModal(`${razon} · ${PLANTA_KEY[p].short}`, recs.filter(r=>r.razon===razon && r.planta===p));
+      }
+    }
+  });
+}
+
+// 3. Cantidad de NCRs por área, por planta
+function chartAreaPlanta(){
+  const ctx = document.getElementById('chartAreaPlanta');
+  const plantas = activePlantas();
+  const recs = baseRecords().filter(r=>plantas.includes(r.planta));
+  const totals = {};
+  recs.forEach(r=>{ totals[r.area] = (totals[r.area]||0)+1; });
+  const areas = Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+  const datasets = plantas.map(p=>({
+    label: PLANTA_KEY[p].short,
+    data: areas.map(a => recs.filter(r=>r.area===a && r.planta===p).length),
+    backgroundColor: PLANTA_KEY[p].color,
+    borderRadius:4,
+  }));
+  charts.areaPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: areas, datasets },
+    options:{
+      maintainAspectRatio:false,
+      layout:{padding:{top:20}},
+      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const area = areas[els[0].index];
+        const p = plantas[els[0].datasetIndex];
+        openDetailModal(`${area} · ${PLANTA_KEY[p].short}`, recs.filter(r=>r.area===area && r.planta===p));
+      }
+    }
+  });
+}
+
+// 4. Razón de NCRs por área (respeta el filtro de planta activo)
+function chartRazonAreaPlanta(){
+  const ctx = document.getElementById('chartRazonAreaPlanta');
+  const recs = currentPlanta==='all' ? baseRecords() : baseRecords().filter(r=>r.planta===currentPlanta);
+  const areaTotals = {};
+  recs.forEach(r=>{ areaTotals[r.area] = (areaTotals[r.area]||0)+1; });
+  const areas = Object.keys(areaTotals).sort((a,b)=>areaTotals[b]-areaTotals[a]);
+  const razonCounts = {};
+  recs.forEach(r=>{ razonCounts[r.razon] = (razonCounts[r.razon]||0)+1; });
+  const topRazones = Object.entries(razonCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  const datasets = topRazones.map((rz,i)=>({
+    label: rz,
+    data: areas.map(a => recs.filter(r=>r.area===a && r.razon===rz).length),
+    backgroundColor: PALETTE[i % PALETTE.length],
+  }));
+  const otherData = areas.map(a => recs.filter(r=>r.area===a && !topRazones.includes(r.razon)).length);
+  if(otherData.some(v=>v>0)) datasets.push({ label:'Otras razones', data: otherData, backgroundColor:'#D8D2C2' });
+  charts.razonAreaPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: areas, datasets },
+    options:{
+      maintainAspectRatio:false,
+      layout:{padding:{top:20}},
+      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const area = areas[els[0].index];
+        const label = datasets[els[0].datasetIndex].label;
+        const matches = label === 'Otras razones'
+          ? recs.filter(r=>r.area===area && !topRazones.includes(r.razon))
+          : recs.filter(r=>r.area===area && r.razon===label);
+        openDetailModal(`${area} · ${label}`, matches);
+      }
+    }
+  });
+}
+
+// 5. NCRs por operador responsable y razón (respeta el filtro de planta activo)
+function chartOperadorRazonPlanta(){
+  const ctx = document.getElementById('chartOperadorRazonPlanta');
+  const recs = currentPlanta==='all' ? baseRecords() : baseRecords().filter(r=>r.planta===currentPlanta);
+  const isValidOp = (op) => op && op.trim() && op.trim() !== '(Omitir)' && op.trim().toUpperCase() !== 'N/A';
+  const opCounts = {};
+  recs.forEach(r=>{ const op = (r.operador||'').trim(); if(isValidOp(op)) opCounts[op] = (opCounts[op]||0)+1; });
+  const ops = Object.entries(opCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(e=>e[0]);
+  const razonCounts = {};
+  recs.forEach(r=>{ if(isValidOp(r.operador)) razonCounts[r.razon] = (razonCounts[r.razon]||0)+1; });
+  const topRazones = Object.entries(razonCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  const datasets = topRazones.map((rz,i)=>({
+    label: rz,
+    data: ops.map(op => recs.filter(r=>(r.operador||'').trim()===op && r.razon===rz).length),
+    backgroundColor: PALETTE[i % PALETTE.length],
+  }));
+  const otherData = ops.map(op => recs.filter(r=>(r.operador||'').trim()===op && !topRazones.includes(r.razon)).length);
+  if(otherData.some(v=>v>0)) datasets.push({ label:'Otras razones', data: otherData, backgroundColor:'#D8D2C2' });
+  charts.operadorRazonPlanta = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: ops, datasets },
+    options:{
+      maintainAspectRatio:false,
+      layout:{padding:{top:20}},
+      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}, autoSkip:false, maxRotation:35, minRotation:20} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      onClick:(evt, els)=>{
+        if(!els.length) return;
+        const op = ops[els[0].index];
+        const label = datasets[els[0].datasetIndex].label;
+        const matches = label === 'Otras razones'
+          ? recs.filter(r=>isValidOp(r.operador) && (r.operador||'').trim()===op && !topRazones.includes(r.razon))
+          : recs.filter(r=>isValidOp(r.operador) && (r.operador||'').trim()===op && r.razon===label);
+        openDetailModal(`${op} · ${label}`, matches);
+      }
+    }
+  });
+}
+
+function renderCharts(){
+  destroyCharts();
+  chartTotalPlanta();
+  chartRazonPlanta();
+  chartAreaPlanta();
+  chartRazonAreaPlanta();
+  chartOperadorRazonPlanta();
+  chartDispPlanta();
+}
+
+function countValidFotos(fotos){
+  const nowSec = Date.now()/1000;
+  return fotos.filter(u=>{
+    const m = u.match(/Expires=(\d+)/);
+    return m ? parseInt(m[1],10) > nowSec : true;
+  }).length;
+}
+
+function rowHtml(r){
+  const pk = PLANTA_KEY[r.planta] || {short:r.planta, cls:''};
+  const nfotos = r.fotos.length;
+  const nvalid = countValidFotos(r.fotos);
+  const allExpired = nfotos>0 && nvalid===0;
+  return `<tr>
+    <td class="mono">${r.idx ?? ''}</td>
+    <td class="mono">${r.ncr}</td>
+    <td class="mono">${r.fecha}</td>
+    <td><span class="badge ${pk.cls}">${pk.short}</span></td>
+    <td>${r.razon}</td>
+    <td>${r.area}</td>
+    <td><span class="disp ${dispClass(r.disposicion)}">${r.disposicion}</span></td>
+    <td class="mono">${r.cantidad||''}</td>
+    <td>${r.inspector}</td>
+    <td>${r.operador||''}</td>
+    <td>${r.proveedor||''}</td>
+    <td>${r.reportado_a||''}</td>
+    <td>
+      <button class="photo-btn ${allExpired?'all-expired':''}" ${nfotos===0?'disabled':''} title="${nvalid} de ${nfotos} fotos con enlace vigente" onclick='openLightbox(${JSON.stringify(r.ncr)}, ${JSON.stringify(r.fotos)}, ${JSON.stringify(r.razon)})'>
+        📷 ${nvalid}/${nfotos}
+      </button>
+    </td>
+  </tr>`;
+}
+
+function renderTable(){
+  let recs = filteredRecords();
+  recs = recs.slice().sort((a,b)=>{
+    let av = a[sortKey], bv = b[sortKey];
+    if(sortKey==='cantidad'){ av = parseFloat(av)||0; bv = parseFloat(bv)||0; }
+    if(av < bv) return -1*sortDir;
+    if(av > bv) return 1*sortDir;
+    return 0;
+  });
+  const tbody = document.getElementById('tbody');
+  if(recs.length === 0){
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">No hay NCRs que coincidan con el filtro.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = recs.map(rowHtml).join('');
+}
+
+function openDetailModal(title, recs){
+  document.getElementById('detailTitle').textContent = title + '  ·  ' + recs.length + (recs.length===1 ? ' NCR' : ' NCRs');
+  const tbody = document.getElementById('detailTbody');
+  tbody.innerHTML = recs.length
+    ? recs.map(rowHtml).join('')
+    : `<tr><td colspan="13"><div class="empty-state">Sin registros para esta selección.</div></td></tr>`;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function handleImgError(img){
+  img.style.display = 'none';
+  const box = document.createElement('div');
+  box.className = 'img-error-box';
+  box.innerHTML = '⚠️ Foto no disponible<div class="sub">El enlace de evidencia expiró</div>';
+  img.insertAdjacentElement('afterend', box);
+}
+
+function openLightbox(ncr, fotos, razon){
+  const lb = document.getElementById('lightbox');
+  const nowSec = Date.now()/1000;
+  const isValid = (u) => { const m = u.match(/Expires=(\d+)/); return m ? parseInt(m[1],10) > nowSec : true; };
+  const ordered = fotos.slice().sort((a,b)=> (isValid(b)?1:0) - (isValid(a)?1:0));
+  const nvalid = fotos.filter(isValid).length;
+  document.getElementById('lbTitle').textContent = 'NCR #' + ncr + ' — ' + razon + '  ·  ' + nvalid + '/' + fotos.length + ' vigentes';
+  document.getElementById('lbBody').innerHTML = ordered.map((url,i)=>
+    `<div class="imgwrap"><img src="${url}" loading="lazy" alt="Evidencia ${i+1}" onerror="handleImgError(this)"/><span>Foto ${i+1} de ${ordered.length}</span></div>`
+  ).join('');
+  lb.classList.add('open');
+}
+document.getElementById('lbClose').onclick = ()=> document.getElementById('lightbox').classList.remove('open');
+document.getElementById('lightbox').addEventListener('click', (e)=>{ if(e.target.id==='lightbox') e.currentTarget.classList.remove('open'); });
+document.getElementById('detailClose').onclick = ()=> document.getElementById('detailModal').classList.remove('open');
+document.getElementById('detailModal').addEventListener('click', (e)=>{ if(e.target.id==='detailModal') e.currentTarget.classList.remove('open'); });
+
+document.getElementById('filterBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  currentPlanta = btn.dataset.planta;
+  renderCharts();
+  renderTable();
+});
+
+document.getElementById('search').addEventListener('input', renderTable);
+
+document.querySelectorAll('thead th[data-key]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    renderTable();
+  });
+});
+
+function applyDateFilter(){
+  const fromEl = document.getElementById('dateFrom');
+  const toEl = document.getElementById('dateTo');
+  dateFrom = fromEl.value || GLOBAL_MIN_DATE;
+  dateTo = toEl.value || GLOBAL_MAX_DATE;
+  if(dateFrom > dateTo){ const tmp = dateFrom; dateFrom = dateTo; dateTo = tmp; fromEl.value = dateFrom; toEl.value = dateTo; }
+  updatePeriodoSub();
+  renderKPIs();
+  renderCharts();
+  renderTable();
+}
+
+const dateFromEl = document.getElementById('dateFrom');
+const dateToEl = document.getElementById('dateTo');
+dateFromEl.min = GLOBAL_MIN_DATE; dateFromEl.max = GLOBAL_MAX_DATE; dateFromEl.value = GLOBAL_MIN_DATE;
+dateToEl.min = GLOBAL_MIN_DATE; dateToEl.max = GLOBAL_MAX_DATE; dateToEl.value = GLOBAL_MAX_DATE;
+dateFromEl.addEventListener('change', applyDateFilter);
+dateToEl.addEventListener('change', applyDateFilter);
+document.getElementById('resetPeriodo').addEventListener('click', ()=>{
+  dateFromEl.value = GLOBAL_MIN_DATE;
+  dateToEl.value = GLOBAL_MAX_DATE;
+  applyDateFilter();
+});
+
+updatePeriodoSub();
+renderKPIs();
+renderCharts();
+renderTable();
+</script>
+
+</body>
+</html>
