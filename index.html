@@ -281,11 +281,17 @@
   @media print{
     .no-print, .filter-bar, #search, header.top .pdf-btn { display:none !important; }
     body{ background:#fff; }
-    .wrap{ padding:0 12px; max-width:100%; }
+    .wrap{ padding:0 12px; max-width:700px; }
     .kpi-row{ margin-top:10px; }
     .card{ box-shadow:none; border:1px solid #ccc; break-inside:avoid; page-break-inside:avoid; }
     .grid{ grid-template-columns:1fr !important; gap:14px; }
-    .card canvas{ max-height:260px !important; }
+    .card canvas{ max-height:none !important; }
+    .card h3{ font-size:20px !important; }
+    .card .hint{ font-size:14px !important; }
+    header.top h1{ font-size:26px !important; }
+    header.top .sub{ font-size:15px !important; }
+    .kpi .label{ font-size:13px !important; }
+    .kpi .value{ font-size:32px !important; }
   }
 </style>
 </head>
@@ -493,9 +499,10 @@ const totalLabelsPlugin = {
     const {ctx} = chart;
     ctx.save();
     ctx.fillStyle = '#26221D';
-    ctx.font = '700 11px Inter, sans-serif';
+    ctx.font = `700 ${pf(11)}px Inter, sans-serif`;
     ctx.textAlign = isHorizontal ? 'left' : 'center';
     ctx.textBaseline = isHorizontal ? 'middle' : 'bottom';
+    const offset = printMode ? 10 : 6;
     for(let i=0;i<numCategories;i++){
       let total = 0;
       chart.data.datasets.forEach((ds, dsIndex)=>{
@@ -507,15 +514,18 @@ const totalLabelsPlugin = {
       const el = lastMeta.data[i];
       if(!el) continue;
       if(isHorizontal){
-        ctx.fillText(total, el.x + 6, el.y);
+        ctx.fillText(total, el.x + offset, el.y);
       } else {
-        ctx.fillText(total, el.x, el.y - 6);
+        ctx.fillText(total, el.x, el.y - offset);
       }
     }
     ctx.restore();
   }
 };
 Chart.register(totalLabelsPlugin);
+
+let printMode = false;
+function pf(n){ return printMode ? Math.round(n * 1.5) : n; }
 
 let currentPlanta = 'all';
 let sortKey = 'fecha';
@@ -609,9 +619,14 @@ function chartTotalPlanta(){
     data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap),
       datasets:[{ data:counts, backgroundColor: plantas.map(p=>PLANTA_KEY[p].color), borderRadius:6, maxBarThickness:80 }]},
     options:{
-      layout:{padding:{top:20}},
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20}},
+      animation: printMode ? {duration:0} : {},
       plugins:{legend:{display:false}},
-      scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}}, x:{grid:{display:false}} },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}}},
+        x:{grid:{display:false}, ticks:{font:{size:pf(11)}}}
+      },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const p = plantas[els[0].index];
@@ -619,6 +634,7 @@ function chartTotalPlanta(){
       }
     }
   });
+  if(printMode) charts.totalPlanta.resize(640, 300);
 }
 
 // 6. Disposición por planta
@@ -638,9 +654,14 @@ function chartDispPlanta(){
     type:'bar',
     data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap), datasets },
     options:{
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(11)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const p = plantas[els[0].index];
@@ -649,6 +670,7 @@ function chartDispPlanta(){
       }
     }
   });
+  if(printMode) charts.dispPlanta.resize(640, 300);
 }
 
 // 2. NCRs por razón, desglosado por planta (barra horizontal apilada)
@@ -670,9 +692,14 @@ function chartRazonPlanta(){
     options:{
       indexAxis:'y',
       maintainAspectRatio:false,
-      layout:{padding:{right:34}},
-      scales:{ x:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} }, y:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      responsive: !printMode,
+      layout:{padding:{right: printMode ? 90 : 34}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} },
+        y:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 15 : 11, font:{size:pf(11)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const razon = razones[els[0].index];
@@ -681,6 +708,7 @@ function chartRazonPlanta(){
       }
     }
   });
+  if(printMode) charts.razonPlanta.resize(640, 520);
 }
 
 // 3. Cantidad de NCRs por área, por planta
@@ -702,9 +730,14 @@ function chartAreaPlanta(){
     data:{ labels: areas, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 15 : 11, font:{size:pf(11)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const area = areas[els[0].index];
@@ -713,6 +746,7 @@ function chartAreaPlanta(){
       }
     }
   });
+  if(printMode) charts.areaPlanta.resize(640, 300);
 }
 
 // 4. Razón de NCRs por área (respeta el filtro de planta activo)
@@ -737,9 +771,14 @@ function chartRazonAreaPlanta(){
     data:{ labels: areas, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const area = areas[els[0].index];
@@ -751,6 +790,7 @@ function chartRazonAreaPlanta(){
       }
     }
   });
+  if(printMode) charts.razonAreaPlanta.resize(640, 310);
 }
 
 // 5. NCRs por operador responsable y razón (respeta el filtro de planta activo)
@@ -776,9 +816,14 @@ function chartOperadorRazonPlanta(){
     data:{ labels: ops, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}, autoSkip:false, maxRotation:35, minRotation:20} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10)}, autoSkip:false, maxRotation:35, minRotation:20} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const op = ops[els[0].index];
@@ -790,6 +835,7 @@ function chartOperadorRazonPlanta(){
       }
     }
   });
+  if(printMode) charts.operadorRazonPlanta.resize(640, 330);
 }
 
 function destroyPrefixed(prefix){
@@ -963,6 +1009,29 @@ function renderCharts(){
   chartTrendTotal();
   chartTrendRazon();
 }
+
+// Redibuja únicamente las gráficas 1-6 (las que salen en el PDF), respetando el modo impresión actual
+function rerenderPdfCharts(){
+  ['totalPlanta','razonPlanta','areaPlanta','razonAreaPlanta','operadorRazonPlanta','dispPlanta'].forEach(k=>{
+    if(charts[k]){ charts[k].destroy(); delete charts[k]; }
+  });
+  chartTotalPlanta();
+  chartRazonPlanta();
+  chartAreaPlanta();
+  chartRazonAreaPlanta();
+  chartOperadorRazonPlanta();
+  chartDispPlanta();
+}
+
+window.addEventListener('beforeprint', ()=>{
+  printMode = true;
+  rerenderPdfCharts();
+});
+
+window.addEventListener('afterprint', ()=>{
+  printMode = false;
+  rerenderPdfCharts();
+});
 
 function countValidFotos(fotos){
   const nowSec = Date.now()/1000;
