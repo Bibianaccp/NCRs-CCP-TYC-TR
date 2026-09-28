@@ -33,6 +33,7 @@ TEMPLATE_PATH = SCRIPT_DIR / "template.html"
 
 COLMAP = {
     'Índice': 'idx',
+    'Hora de entrega': 'hora_entrega',
     'Detalles del colector': 'colector',
     '1. Fecha en que se levanta el NCR': 'fecha',
     '2. Nombre de la persona que encontro la No Conformidad': 'inspector',
@@ -51,16 +52,65 @@ COLMAP = {
 }
 
 
+MESES_ES = {
+    'ene': 1, 'feb': 2, 'mar': 3, 'abr': 4, 'may': 5, 'jun': 6,
+    'jul': 7, 'ago': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dic': 12,
+}
+
+
+def parse_fecha_espanol(valor):
+    """Convierte fechas tipo 'jun 01 2026' / 'ago 03 2026' a datetime, sin
+    depender de que la abreviatura de mes en español coincida por accidente
+    con la abreviatura en inglés (jun/jul sí coinciden, pero ago/dic/etc no)."""
+    if pd.isna(valor):
+        return pd.NaT
+    texto = str(valor).strip().lower()
+    partes = texto.split()
+    if len(partes) == 3:
+        mes_abr, dia, anio = partes
+        mes = MESES_ES.get(mes_abr[:3])
+        if mes:
+            try:
+                return pd.Timestamp(year=int(anio), month=mes, day=int(dia))
+            except (ValueError, TypeError):
+                pass
+    # respaldo: dejar que pandas lo intente por si viene en otro formato
+    return pd.to_datetime(valor, errors='coerce')
+
+
+def parse_hora_entrega(valor):
+    """Convierte 'Hora de entrega' (timestamp que SurveyMars genera solo al
+    recibir la respuesta, ej. 'sept 28 2026 06:39:08 AM (UTC-06:00) Mountain
+    Time (Denver)') a datetime. Se usa como la fecha oficial del NCR en vez de
+    '1. Fecha en que se levanta el NCR' porque esa la escribe el usuario a
+    mano y es fácil que se equivoque; 'Hora de entrega' es automática."""
+    if pd.isna(valor):
+        return pd.NaT
+    texto = str(valor).strip().lower()
+    m = re.match(r'^([a-z]+)\s+(\d{1,2})\s+(\d{4})', texto)
+    if m:
+        mes_abr, dia, anio = m.groups()
+        mes = MESES_ES.get(mes_abr[:3])
+        if mes:
+            try:
+                return pd.Timestamp(year=int(anio), month=mes, day=int(dia))
+            except (ValueError, TypeError):
+                pass
+    # respaldo: dejar que pandas lo intente por si viene en otro formato
+    return pd.to_datetime(valor, errors='coerce')
+
+
 def map_planta(colector, inspector):
     # Jahaziel Soto y Mario Flores son siempre Custom Crates and Pallets (El Paso),
     # sin importar qué código de colector traiga la fila (caso conocido de código cruzado).
     if inspector in ('Jahaziel Soto', 'Mario Flores'):
         return 'Custom Crates and Pallets (El Paso)'
-    if colector == '0706':
+    colector_lower = colector.lower()
+    if colector_lower == '0706':
         return 'Tarimas y Contenedores (Juárez)'
-    elif colector in ('1122', '8844'):
+    elif colector_lower in ('1122', '8844'):
         return 'Custom Crates and Pallets (El Paso)'
-    elif colector == '081218Fa':
+    elif colector_lower == '081218fa':
         return 'Tarimas Regias (Monterrey)'
     return 'Sin identificar'
 
@@ -92,14 +142,14 @@ def load_and_clean(xlsx_path):
 
     df['colector'] = df['colector'].astype(str).str.strip()
     df['planta'] = df.apply(lambda row: map_planta(row['colector'], row['inspector']), axis=1)
-    df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
+    df['fecha_dt'] = df['hora_entrega'].apply(parse_hora_entrega)
     df['razon_clean'] = df['razon'].apply(clean_razon)
     df['area'] = df['area'].fillna('Sin especificar').astype(str).str.strip()
     df['disposicion'] = df['disposicion'].fillna('Sin especificar').astype(str).str.strip()
     df['proveedor'] = df['proveedor'].replace('Misma', 'Mimsa')
 
     before = len(df)
-    df = df.drop_duplicates(subset=['colector', 'ncr_num', 'razon', 'fecha', 'area', 'cantidad'], keep='first')
+    df = df.drop_duplicates(subset=['colector', 'ncr_num', 'razon', 'fecha', 'area', 'cantidad', 'parte'], keep='first')
     after = len(df)
     print(f"[generate_report] Filas antes de deduplicar: {before}, despues: {after}")
 
