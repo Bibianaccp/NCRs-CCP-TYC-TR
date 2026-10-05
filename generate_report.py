@@ -110,7 +110,7 @@ def map_planta(colector, inspector):
         return 'Tarimas y Contenedores (Juárez)'
     elif colector_lower in ('1122', '8844'):
         return 'Custom Crates and Pallets (El Paso)'
-    elif colector_lower == '081218fa':
+    elif colector_lower in ('081218fa', '812168'):
         return 'Tarimas Regias (Monterrey)'
     return 'Sin identificar'
 
