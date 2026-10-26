@@ -101,6 +101,9 @@
   .chip[data-planta="Tarimas y Contenedores (Juárez)"].active{ background:var(--juarez); border-color:var(--juarez);}
   .chip[data-planta="Custom Crates and Pallets (El Paso)"].active{ background:var(--elpaso); border-color:var(--elpaso);}
   .chip[data-planta="Tarimas Regias (Monterrey)"].active{ background:var(--monterrey); border-color:var(--monterrey);}
+  .chip[data-tplanta="Tarimas y Contenedores (Juárez)"].active{ background:var(--juarez); border-color:var(--juarez);}
+  .chip[data-tplanta="Custom Crates and Pallets (El Paso)"].active{ background:var(--elpaso); border-color:var(--elpaso);}
+  .chip[data-tplanta="Tarimas Regias (Monterrey)"].active{ background:var(--monterrey); border-color:var(--monterrey);}
 
   .grid{
     display:grid;
@@ -126,6 +129,25 @@
   .card div[style*="height"] canvas{ max-height:none; }
   .card.span2{ grid-column:span 2; }
   @media (max-width:900px){ .card.span2{ grid-column:span 1; } }
+
+  .trend-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:8px;
+  }
+  @media (max-width:900px){ .trend-grid{ grid-template-columns:1fr; } }
+  .trend-item{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px 6px;
+  }
+  .trend-item h4{
+    margin:0 0 6px;
+    font-size:12.5px;
+    font-weight:700;
+  }
+  .trend-item .chart-wrap{ height:200px; }
 
   table{ width:100%; border-collapse:collapse; font-size:13px; }
   thead th{
@@ -240,13 +262,52 @@
   .img-error-box .sub{ color:#9E9788; font-size:10.5px; }
 
   footer{ text-align:center; font-size:11px; color:var(--ink-soft); padding:20px 0 40px; }
+
+  .pdf-btn{
+    border:1px solid var(--amber);
+    background:var(--amber);
+    color:#26221D;
+    padding:9px 16px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+  }
+  .pdf-btn:hover{ background:#B37A18; border-color:#B37A18; }
+
+  @media print{
+    .no-print, .filter-bar, #search, header.top .pdf-btn { display:none !important; }
+    body{ background:#fff; }
+    .wrap{ padding:0 12px; max-width:700px; }
+    .kpi-row{ margin-top:10px; }
+    .card{ box-shadow:none; border:1px solid #ccc; break-inside:avoid; page-break-inside:avoid; }
+    .grid{ grid-template-columns:1fr !important; gap:14px; }
+    .card canvas{ max-height:none !important; }
+    .card h3{ font-size:20px !important; }
+    .card .hint{ font-size:14px !important; }
+    header.top h1{ font-size:26px !important; }
+    header.top .sub{ font-size:15px !important; }
+    .kpi .label{ font-size:13px !important; }
+    .kpi .value{ font-size:32px !important; }
+  }
 </style>
 </head>
 <body>
 
 <header class="top">
-  <h1 class="display">Reporte Semanal de NCRs — Inspección de Tarimas</h1>
-  <div class="sub" id="periodoSub">Periodo del __FECHA_MIN__ al __FECHA_MAX__ &nbsp;·&nbsp; __TOTAL__ NCRs registrados &nbsp;·&nbsp; 3 plantas</div>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+    <div>
+      <h1 class="display">Reporte Semanal de NCRs — Inspección de Tarimas</h1>
+      <div class="sub" id="periodoSub">Periodo del __FECHA_MIN__ al __FECHA_MAX__ &nbsp;·&nbsp; __TOTAL__ NCRs registrados &nbsp;·&nbsp; 3 plantas</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+      <button class="pdf-btn" onclick="downloadPdf()">📄 Descargar PDF (Gráficas 1-6)</button>
+      <a href="otros_procesos.html" class="no-print" style="color:#E8D9B5; font-size:13px; font-weight:600;">NCRs otros procesos →</a>
+    </div>
+  </div>
 </header>
 
 <div class="kpi-row" id="kpiRow"></div>
@@ -267,6 +328,7 @@
     <span style="color:var(--ink-soft); font-size:13px;">al</span>
     <input type="date" id="dateTo" class="date-input">
     <button class="chip" id="resetPeriodo">Todo el periodo</button>
+    <button class="chip" id="lastWeekBtn">Última semana</button>
   </div>
 
   <div class="grid">
@@ -302,7 +364,7 @@
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:24px;">
+  <div class="card no-print" style="margin-bottom:24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
       <div>
         <h3 style="margin-bottom:2px;">Detalle de NCRs</h3>
@@ -332,6 +394,50 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
+  </div>
+
+  <h2 class="display no-print" style="margin:32px 0 4px; font-size:21px; font-weight:700; border-top:2px solid var(--amber); padding-top:20px;">TENDENCIA NCR</h2>
+
+  <div class="filter-bar">
+    <span class="lbl">Periodo de esta sección:</span>
+    <input type="date" id="trendDateFrom" class="date-input">
+    <span style="color:var(--ink-soft); font-size:13px;">al</span>
+    <input type="date" id="trendDateTo" class="date-input">
+    <button class="chip" id="resetTrendPeriodo">Todo el periodo</button>
+  </div>
+
+  <div class="filter-bar" id="trendPlantaBar">
+    <span class="lbl">Planta:</span>
+    <button class="chip active" data-tplanta="all">Todas</button>
+    <button class="chip" data-tplanta="Tarimas y Contenedores (Juárez)">Tarimas y Contenedores</button>
+    <button class="chip" data-tplanta="Custom Crates and Pallets (El Paso)">Custom Crates and Pallets</button>
+    <button class="chip" data-tplanta="Tarimas Regias (Monterrey)">Tarimas Regias</button>
+  </div>
+
+  <div class="filter-bar" id="granBar">
+    <span class="lbl">Tipo de tendencia:</span>
+    <button class="chip active" data-gran="week">Semanal</button>
+    <button class="chip" data-gran="month">Mensual</button>
+    <button class="chip" data-gran="year">Anual</button>
+  </div>
+
+  <div class="card no-print" style="margin-bottom:18px;">
+    <h3>7. Tendencia de NCR Total</h3>
+    <div class="hint">Evolución del total de NCRs en el tiempo, según la planta y el tipo de tendencia elegidos arriba</div>
+    <div class="hint" id="trendRange7" style="font-weight:700; color:var(--ink);"></div>
+    <div class="trend-grid" id="trendTotalGrid"></div>
+  </div>
+
+  <div class="card no-print" style="margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:2px;">
+      <div>
+        <h3 style="margin-bottom:2px;">8. Tendencia de NCR por Razón</h3>
+        <div class="hint" style="margin-bottom:0;">Elige un defecto para ver si aumenta o disminuye, según la planta y el tipo de tendencia elegidos arriba</div>
+      </div>
+      <select id="trendRazonSelect" class="date-input" style="min-width:220px;"></select>
+    </div>
+    <div class="hint" id="trendRange8" style="font-weight:700; color:var(--ink);"></div>
+    <div class="trend-grid" id="trendRazonGrid"></div>
   </div>
 
   <footer id="footerInfo">Generado a partir del registro de inspección de calidad · __TOTAL__ NCRs · __FECHA_MIN__ – __FECHA_MAX__</footer>
@@ -396,9 +502,10 @@ const totalLabelsPlugin = {
     const {ctx} = chart;
     ctx.save();
     ctx.fillStyle = '#26221D';
-    ctx.font = '700 11px Inter, sans-serif';
+    ctx.font = `700 ${pf(11)}px Inter, sans-serif`;
     ctx.textAlign = isHorizontal ? 'left' : 'center';
     ctx.textBaseline = isHorizontal ? 'middle' : 'bottom';
+    const offset = printMode ? 10 : 6;
     for(let i=0;i<numCategories;i++){
       let total = 0;
       chart.data.datasets.forEach((ds, dsIndex)=>{
@@ -410,15 +517,18 @@ const totalLabelsPlugin = {
       const el = lastMeta.data[i];
       if(!el) continue;
       if(isHorizontal){
-        ctx.fillText(total, el.x + 6, el.y);
+        ctx.fillText(total, el.x + offset, el.y);
       } else {
-        ctx.fillText(total, el.x, el.y - 6);
+        ctx.fillText(total, el.x, el.y - offset);
       }
     }
     ctx.restore();
   }
 };
 Chart.register(totalLabelsPlugin);
+
+let printMode = false;
+function pf(n){ return printMode ? Math.round(n * 1.5) : n; }
 
 let currentPlanta = 'all';
 let sortKey = 'fecha';
@@ -451,6 +561,14 @@ function formatPeriodo(fromStr, toStr){
 function updatePeriodoSub(){
   const total = baseRecords().length;
   document.getElementById('periodoSub').innerHTML = `${formatPeriodo(dateFrom,dateTo)} &nbsp;·&nbsp; ${total} NCRs registrados &nbsp;·&nbsp; 3 plantas`;
+}
+
+function downloadPdf(){
+  const plantaLabel = currentPlanta === 'all' ? 'Todas_las_plantas' : PLANTA_KEY[currentPlanta].short.replace(/\s+/g,'_');
+  const originalTitle = document.title;
+  document.title = `Reporte_NCR_${plantaLabel}_${dateFrom}_a_${dateTo}`;
+  window.print();
+  setTimeout(()=>{ document.title = originalTitle; }, 500);
 }
 
 function filteredRecords(){
@@ -504,9 +622,14 @@ function chartTotalPlanta(){
     data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap),
       datasets:[{ data:counts, backgroundColor: plantas.map(p=>PLANTA_KEY[p].color), borderRadius:6, maxBarThickness:80 }]},
     options:{
-      layout:{padding:{top:20}},
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20}},
+      animation: printMode ? {duration:0} : {},
       plugins:{legend:{display:false}},
-      scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}}, x:{grid:{display:false}} },
+      scales:{
+        y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}}},
+        x:{grid:{display:false}, ticks:{font:{size:pf(11)}}}
+      },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const p = plantas[els[0].index];
@@ -514,6 +637,7 @@ function chartTotalPlanta(){
       }
     }
   });
+  if(printMode) charts.totalPlanta.resize(640, 300);
 }
 
 // 6. Disposición por planta
@@ -533,9 +657,14 @@ function chartDispPlanta(){
     type:'bar',
     data:{ labels: plantas.map(p=>PLANTA_KEY[p].wrap), datasets },
     options:{
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(11)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const p = plantas[els[0].index];
@@ -544,6 +673,7 @@ function chartDispPlanta(){
       }
     }
   });
+  if(printMode) charts.dispPlanta.resize(640, 300);
 }
 
 // 2. NCRs por razón, desglosado por planta (barra horizontal apilada)
@@ -565,9 +695,14 @@ function chartRazonPlanta(){
     options:{
       indexAxis:'y',
       maintainAspectRatio:false,
-      layout:{padding:{right:34}},
-      scales:{ x:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} }, y:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      responsive: !printMode,
+      layout:{padding:{right: printMode ? 90 : 34}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} },
+        y:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 15 : 11, font:{size:pf(11)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const razon = razones[els[0].index];
@@ -576,6 +711,7 @@ function chartRazonPlanta(){
       }
     }
   });
+  if(printMode) charts.razonPlanta.resize(640, 520);
 }
 
 // 3. Cantidad de NCRs por área, por planta
@@ -597,9 +733,14 @@ function chartAreaPlanta(){
     data:{ labels: areas, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:11,font:{size:11}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 15 : 11, font:{size:pf(11)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const area = areas[els[0].index];
@@ -608,6 +749,7 @@ function chartAreaPlanta(){
       }
     }
   });
+  if(printMode) charts.areaPlanta.resize(640, 300);
 }
 
 // 4. Razón de NCRs por área (respeta el filtro de planta activo)
@@ -632,9 +774,14 @@ function chartRazonAreaPlanta(){
     data:{ labels: areas, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10.5}} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10.5)}} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const area = areas[els[0].index];
@@ -646,6 +793,7 @@ function chartRazonAreaPlanta(){
       }
     }
   });
+  if(printMode) charts.razonAreaPlanta.resize(640, 310);
 }
 
 // 5. NCRs por operador responsable y razón (respeta el filtro de planta activo)
@@ -671,9 +819,14 @@ function chartOperadorRazonPlanta(){
     data:{ labels: ops, datasets },
     options:{
       maintainAspectRatio:false,
-      layout:{padding:{top:20}},
-      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{font:{size:10}, autoSkip:false, maxRotation:35, minRotation:20} }, y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'} } },
-      plugins:{ legend:{ position:'bottom', labels:{boxWidth:10,font:{size:10}} } },
+      responsive: !printMode,
+      layout:{padding:{top: printMode ? 34 : 20, right: printMode ? 30 : 6}},
+      animation: printMode ? {duration:0} : {},
+      scales:{
+        x:{ stacked:true, grid:{display:false}, ticks:{font:{size:pf(10)}, autoSkip:false, maxRotation:35, minRotation:20} },
+        y:{ stacked:true, beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{font:{size:pf(11)}} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{boxWidth: printMode ? 14 : 10, font:{size:pf(10)}} } },
       onClick:(evt, els)=>{
         if(!els.length) return;
         const op = ops[els[0].index];
@@ -685,6 +838,167 @@ function chartOperadorRazonPlanta(){
       }
     }
   });
+  if(printMode) charts.operadorRazonPlanta.resize(640, 330);
+}
+
+function destroyPrefixed(prefix){
+  Object.keys(charts).forEach(k=>{
+    if(k.startsWith(prefix)){ charts[k].destroy(); delete charts[k]; }
+  });
+}
+
+let trendGran = 'week';
+let trendPlanta = 'all';
+let trendRazonChoice = null;
+let trendDateFrom = null;
+let trendDateTo = null;
+
+function trendBaseRecords(){
+  const from = trendDateFrom || GLOBAL_MIN_DATE;
+  const to = trendDateTo || GLOBAL_MAX_DATE;
+  return DATA.records.filter(r => r.fecha >= from && r.fecha <= to);
+}
+
+function trendActivePlantas(){
+  return trendPlanta === 'all' ? Object.keys(PLANTA_KEY) : [trendPlanta];
+}
+
+function periodKey(dateStr, gran){
+  const d = new Date(dateStr+'T00:00:00');
+  if(gran === 'year') return String(d.getFullYear());
+  if(gran === 'month') return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const onejan = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil( (((d - onejan) / 86400000) + onejan.getDay()+1)/7 );
+  return d.getFullYear()+'-S'+String(week).padStart(2,'0');
+}
+
+const MESES_ABBR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function periodLabel(key, gran){
+  if(gran === 'year') return key;
+  if(gran === 'month'){
+    const [y,m] = key.split('-');
+    return MESES_ABBR[parseInt(m,10)-1] + " '" + y.slice(2);
+  }
+  const [y,w] = key.split('-S');
+  return 'Sem ' + parseInt(w,10) + " '" + y.slice(2);
+}
+
+function formatFechaLarga(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return d.getDate() + ' de ' + cap(MESES[d.getMonth()]) + ' de ' + d.getFullYear();
+}
+
+function updateTrendRangeLabel(elId, fechas){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(fechas.length === 0){ el.textContent = 'Sin datos en el periodo seleccionado.'; return; }
+  const sorted = fechas.slice().sort();
+  const min = sorted[0], max = sorted[sorted.length-1];
+  el.textContent = min === max
+    ? `Medido el ${formatFechaLarga(min)}`
+    : `Medido del ${formatFechaLarga(min)} al ${formatFechaLarga(max)}`;
+}
+
+// 7. Tendencia de NCR total (respeta planta y granularidad de esta sección)
+function chartTrendTotal(){
+  destroyPrefixed('trendTotal_');
+  const grid = document.getElementById('trendTotalGrid');
+  grid.innerHTML = '';
+  const plantas = trendActivePlantas();
+  let allFechas = [];
+  plantas.forEach(p=>{
+    const recs = trendBaseRecords().filter(r=>r.planta===p);
+    allFechas = allFechas.concat(recs.map(r=>r.fecha));
+    const safeId = 'trendTotal_' + p.replace(/[^a-zA-Z0-9]/g,'');
+    const item = document.createElement('div');
+    item.className = 'trend-item';
+    item.innerHTML = `<h4 style="color:${PLANTA_KEY[p].color}">${PLANTA_KEY[p].short}</h4><div class="chart-wrap"><canvas id="${safeId}"></canvas></div>`;
+    grid.appendChild(item);
+
+    const periods = [...new Set(recs.map(r=>periodKey(r.fecha, trendGran)))].sort();
+    const counts = periods.map(pd => recs.filter(r=>periodKey(r.fecha, trendGran)===pd).length);
+    const labels = periods.map(pd=>periodLabel(pd, trendGran));
+
+    charts[safeId] = new Chart(document.getElementById(safeId), {
+      type:'line',
+      data:{ labels, datasets:[{ data:counts, borderColor:PLANTA_KEY[p].color, backgroundColor:PLANTA_KEY[p].color, tension:.3, fill:false, pointRadius:3 }] },
+      options:{
+        maintainAspectRatio:false,
+        layout:{padding:{top:24}},
+        plugins:{ legend:{display:false} },
+        scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{precision:0}}, x:{grid:{display:false}, ticks:{font:{size:10.5}, autoSkip:false, maxRotation:0, minRotation:0} } }
+      }
+    });
+  });
+  if(plantas.length === 1){
+    document.getElementById('trendTotalGrid').style.gridTemplateColumns = '1fr';
+    document.querySelector('#trendTotalGrid .chart-wrap').style.height = '320px';
+  } else {
+    document.getElementById('trendTotalGrid').style.gridTemplateColumns = '';
+  }
+  updateTrendRangeLabel('trendRange7', allFechas);
+}
+
+// Poblar el selector de defectos según la planta elegida en esta sección
+function populateTrendRazonSelect(){
+  const plantas = trendActivePlantas();
+  const recs = trendBaseRecords().filter(r=>plantas.includes(r.planta));
+  const counts = {};
+  recs.forEach(r=>{ counts[r.razon] = (counts[r.razon]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  const sel = document.getElementById('trendRazonSelect');
+  const prevValue = trendRazonChoice;
+  sel.innerHTML = sorted.map(rz=>`<option value="${rz.replace(/"/g,'&quot;')}">${rz}</option>`).join('');
+  if(prevValue && sorted.includes(prevValue)){
+    sel.value = prevValue;
+    trendRazonChoice = prevValue;
+  } else {
+    trendRazonChoice = sorted[0] || null;
+    if(trendRazonChoice) sel.value = trendRazonChoice;
+  }
+}
+
+// 8. Tendencia de un defecto elegido (respeta planta y granularidad de esta sección)
+function chartTrendRazon(){
+  populateTrendRazonSelect();
+  destroyPrefixed('trendRazon_');
+  const grid = document.getElementById('trendRazonGrid');
+  grid.innerHTML = '';
+  if(!trendRazonChoice){ updateTrendRangeLabel('trendRange8', []); return; }
+  const plantas = trendActivePlantas();
+  let allFechas = [];
+  plantas.forEach(p=>{
+    const recs = trendBaseRecords().filter(r=>r.planta===p && r.razon===trendRazonChoice);
+    const allRecsPlanta = trendBaseRecords().filter(r=>r.planta===p);
+    allFechas = allFechas.concat(allRecsPlanta.map(r=>r.fecha));
+    const safeId = 'trendRazon_' + p.replace(/[^a-zA-Z0-9]/g,'');
+    const item = document.createElement('div');
+    item.className = 'trend-item';
+    item.innerHTML = `<h4 style="color:${PLANTA_KEY[p].color}">${PLANTA_KEY[p].short}</h4><div class="chart-wrap"><canvas id="${safeId}"></canvas></div>`;
+    grid.appendChild(item);
+
+    const periods = [...new Set(allRecsPlanta.map(r=>periodKey(r.fecha, trendGran)))].sort();
+    const counts = periods.map(pd => recs.filter(r=>periodKey(r.fecha, trendGran)===pd).length);
+    const labels = periods.map(pd=>periodLabel(pd, trendGran));
+
+    charts[safeId] = new Chart(document.getElementById(safeId), {
+      type:'line',
+      data:{ labels, datasets:[{ label: trendRazonChoice, data:counts, borderColor:PLANTA_KEY[p].color, backgroundColor:PLANTA_KEY[p].color, tension:.3, fill:false, pointRadius:3 }] },
+      options:{
+        maintainAspectRatio:false,
+        layout:{padding:{top:24}},
+        plugins:{ legend:{display:false} },
+        scales:{ y:{beginAtZero:true, grid:{color:'#EDE8DB'}, ticks:{precision:0}}, x:{grid:{display:false}, ticks:{font:{size:10.5}, autoSkip:false, maxRotation:0, minRotation:0} } }
+      }
+    });
+  });
+  if(plantas.length === 1){
+    document.getElementById('trendRazonGrid').style.gridTemplateColumns = '1fr';
+    document.querySelector('#trendRazonGrid .chart-wrap').style.height = '320px';
+  } else {
+    document.getElementById('trendRazonGrid').style.gridTemplateColumns = '';
+  }
+  updateTrendRangeLabel('trendRange8', allFechas);
 }
 
 function renderCharts(){
@@ -695,7 +1009,32 @@ function renderCharts(){
   chartRazonAreaPlanta();
   chartOperadorRazonPlanta();
   chartDispPlanta();
+  chartTrendTotal();
+  chartTrendRazon();
 }
+
+// Redibuja únicamente las gráficas 1-6 (las que salen en el PDF), respetando el modo impresión actual
+function rerenderPdfCharts(){
+  ['totalPlanta','razonPlanta','areaPlanta','razonAreaPlanta','operadorRazonPlanta','dispPlanta'].forEach(k=>{
+    if(charts[k]){ charts[k].destroy(); delete charts[k]; }
+  });
+  chartTotalPlanta();
+  chartRazonPlanta();
+  chartAreaPlanta();
+  chartRazonAreaPlanta();
+  chartOperadorRazonPlanta();
+  chartDispPlanta();
+}
+
+window.addEventListener('beforeprint', ()=>{
+  printMode = true;
+  rerenderPdfCharts();
+});
+
+window.addEventListener('afterprint', ()=>{
+  printMode = false;
+  rerenderPdfCharts();
+});
 
 function countValidFotos(fotos){
   const nowSec = Date.now()/1000;
@@ -792,6 +1131,31 @@ document.getElementById('filterBar').addEventListener('click', (e)=>{
   renderTable();
 });
 
+document.getElementById('trendPlantaBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  document.querySelectorAll('#trendPlantaBar .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  trendPlanta = btn.dataset.tplanta;
+  chartTrendTotal();
+  chartTrendRazon();
+});
+
+document.getElementById('granBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  document.querySelectorAll('#granBar .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  trendGran = btn.dataset.gran;
+  chartTrendTotal();
+  chartTrendRazon();
+});
+
+document.getElementById('trendRazonSelect').addEventListener('change', (e)=>{
+  trendRazonChoice = e.target.value;
+  chartTrendRazon();
+});
+
 document.getElementById('search').addEventListener('input', renderTable);
 
 document.querySelectorAll('thead th[data-key]').forEach(th=>{
@@ -824,6 +1188,49 @@ document.getElementById('resetPeriodo').addEventListener('click', ()=>{
   dateFromEl.value = GLOBAL_MIN_DATE;
   dateToEl.value = GLOBAL_MAX_DATE;
   applyDateFilter();
+});
+
+function getLastCompleteWeek(){
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const dow = now.getDay(); // 0=domingo ... 6=sabado
+  const thisWeekSunday = new Date(now);
+  thisWeekSunday.setDate(now.getDate() - dow);
+  const lastWeekSaturday = new Date(thisWeekSunday);
+  lastWeekSaturday.setDate(thisWeekSunday.getDate() - 1);
+  const lastWeekSunday = new Date(lastWeekSaturday);
+  lastWeekSunday.setDate(lastWeekSaturday.getDate() - 6);
+  const toISO = (d) => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return { from: toISO(lastWeekSunday), to: toISO(lastWeekSaturday) };
+}
+
+document.getElementById('lastWeekBtn').addEventListener('click', ()=>{
+  const { from, to } = getLastCompleteWeek();
+  dateFromEl.value = from;
+  dateToEl.value = to;
+  applyDateFilter();
+});
+
+function applyTrendDateFilter(){
+  const fromEl = document.getElementById('trendDateFrom');
+  const toEl = document.getElementById('trendDateTo');
+  trendDateFrom = fromEl.value || GLOBAL_MIN_DATE;
+  trendDateTo = toEl.value || GLOBAL_MAX_DATE;
+  if(trendDateFrom > trendDateTo){ const tmp = trendDateFrom; trendDateFrom = trendDateTo; trendDateTo = tmp; fromEl.value = trendDateFrom; toEl.value = trendDateTo; }
+  chartTrendTotal();
+  chartTrendRazon();
+}
+
+const trendDateFromEl = document.getElementById('trendDateFrom');
+const trendDateToEl = document.getElementById('trendDateTo');
+trendDateFromEl.min = GLOBAL_MIN_DATE; trendDateFromEl.max = GLOBAL_MAX_DATE; trendDateFromEl.value = GLOBAL_MIN_DATE;
+trendDateToEl.min = GLOBAL_MIN_DATE; trendDateToEl.max = GLOBAL_MAX_DATE; trendDateToEl.value = GLOBAL_MAX_DATE;
+trendDateFromEl.addEventListener('change', applyTrendDateFilter);
+trendDateToEl.addEventListener('change', applyTrendDateFilter);
+document.getElementById('resetTrendPeriodo').addEventListener('click', ()=>{
+  trendDateFromEl.value = GLOBAL_MIN_DATE;
+  trendDateToEl.value = GLOBAL_MAX_DATE;
+  applyTrendDateFilter();
 });
 
 updatePeriodoSub();
