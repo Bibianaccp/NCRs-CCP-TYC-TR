@@ -301,7 +301,7 @@
   <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
     <div>
       <h1 class="display">Reporte Semanal de NCRs — Otros Procesos (Cajas de Transporte)</h1>
-      <div class="sub" id="periodoSub">Periodo del 26 Oct 2026 al 26 Oct 2026 &nbsp;·&nbsp; 1 NCRs registrados &nbsp;·&nbsp; 3 plantas</div>
+      <div class="sub" id="periodoSub">Periodo del 26 Oct 2026 al 26 Oct 2026 &nbsp;·&nbsp; 2 NCRs registrados &nbsp;·&nbsp; 3 plantas</div>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
       <button class="pdf-btn" onclick="downloadPdf()">📄 Descargar PDF (Gráficas 1-5)</button>
@@ -433,7 +433,7 @@
     <div class="trend-grid" id="trendRazonGrid"></div>
   </div>
 
-  <footer id="footerInfo">Generado a partir del registro de NCRs de otros procesos (cajas de transporte) · 1 NCRs · 26 Oct 2026 – 26 Oct 2026</footer>
+  <footer id="footerInfo">Generado a partir del registro de NCRs de otros procesos (cajas de transporte) · 2 NCRs · 26 Oct 2026 – 26 Oct 2026</footer>
 </div>
 
 <div class="lightbox" id="lightbox">
@@ -468,7 +468,7 @@
 </div>
 
 <script>
-const DATA = {"records": [{"idx": 1, "ncr": "1", "fecha": "2026-10-26", "planta": "Custom Crates and Pallets (El Paso)", "inspector": "Jahaziel Soto", "razon": "Techo dañado", "area": "Montacargista", "proveedor": "", "disposicion": "", "descripcion": "Prueba", "cantidad": "", "operador": "Prueba", "reportado_a": "Prueba", "verificado_por": "Jahaziel Soto", "fotos": ["https://ossprivate.surveymars.com/answer/inCMEW7s9/s_1_q14_4722042500402138822.jpg?response-content-disposition=attachment%3Bfilename%3D1_14_image.jpg&Expires=1794337025&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=MjrqWFQu6izJjGiTys7dyOWuGko%3D"]}], "by_planta": {"Custom Crates and Pallets (El Paso)": 1}, "total": 1, "fecha_min": "26 Oct 2026", "fecha_max": "26 Oct 2026"};
+const DATA = {"records": [{"idx": 4, "ncr": "4", "fecha": "2026-10-26", "planta": "Custom Crates and Pallets (El Paso)", "inspector": "Jahaziel Soto", "razon": "Chofer no siguio procedimiento", "area": "Mantenimiento", "proveedor": "", "disposicion": "", "descripcion": "Se reparó y se liberó el candado. \n45 de tiempo puerto.", "cantidad": "", "operador": "Manuel Corrales", "reportado_a": "Tony", "verificado_por": "Jahaziel Soto", "fotos": ["https://ossprivate.surveymars.com/answer/inCMEW7s9/s_2_q14_4791442946619817283.jpeg?response-content-disposition=attachment%3Bfilename%3D4_14_905B5044-DBD2-4A95-BE22-5C14A2B3635C.jpeg&Expires=1795521674&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=YWWpiGehHvCr0pQa6bz2FibJrqs%3D", "https://ossprivate.surveymars.com/answer/inCMEW7s9/s_2_q14_5405444800420878530.jpeg?response-content-disposition=attachment%3Bfilename%3D4_14_905B5044-DBD2-4A95-BE22-5C14A2B3635C.jpeg&Expires=1795521674&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=EvbPzK8Fe1AYvAGwtLy4zGCu0ZM%3D", "https://ossprivate.surveymars.com/answer/inCMEW7s9/s_2_q14_4798613628382150511.jpeg?response-content-disposition=attachment%3Bfilename%3D4_14_905B5044-DBD2-4A95-BE22-5C14A2B3635C.jpeg&Expires=1795521674&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=oMN3zt9p1QR5H%2FyW2wkJ%2FcAGxAc%3D"]}, {"idx": 5, "ncr": "5", "fecha": "2026-10-26", "planta": "Custom Crates and Pallets (El Paso)", "inspector": "Jahaziel Soto", "razon": "Chofer no siguio procedimiento", "area": "Mantenimiento", "proveedor": "", "disposicion": "", "descripcion": "Se reparó y se liberó el candado. \n  30 de tiempo puerto.", "cantidad": "", "operador": "Manuel Corrales", "reportado_a": "Tony", "verificado_por": "Jahaziel Soto", "fotos": ["https://ossprivate.surveymars.com/answer/inCMEW7s9/s_5_q14_5216453308311552500.jpeg?response-content-disposition=attachment%3Bfilename%3D5_14_220C2B7A-70EA-4A90-A951-2B521A67BC67.jpeg&Expires=1795521674&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=D5jW7kuPbbcqeUCGrtm5CAmsyQM%3D", "https://ossprivate.surveymars.com/answer/inCMEW7s9/s_5_q14_4827018035083546328.jpeg?response-content-disposition=attachment%3Bfilename%3D5_14_220C2B7A-70EA-4A90-A951-2B521A67BC67.jpeg&Expires=1795521674&OSSAccessKeyId=LTAI5tCPbxY48BbJtHn4QcZK&Signature=249ACjnj%2FZZ9VRM4aAZdjz%2BYMHo%3D"]}], "by_planta": {"Custom Crates and Pallets (El Paso)": 2}, "total": 2, "fecha_min": "26 Oct 2026", "fecha_max": "26 Oct 2026"};
 
 const PLANTA_KEY = {
   'Tarimas y Contenedores (Juárez)': {short:'Tarimas y Contenedores', wrap:['Tarimas y','Contenedores'], cls:'planta-juarez', color:'#1B5E4F'},
