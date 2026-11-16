@@ -132,6 +132,50 @@ def split_fotos(f):
     return [u.strip() for u in str(f).split(';') if u.strip()]
 
 
+VENTANA_REENVIO_SEG = 120
+CLAVE_DEDUP = ['colector', 'ncr_num', 'razon', 'fecha', 'area', 'cantidad', 'parte']
+
+
+def _hora_a_segundos(valor):
+    """'sept 28 2026 06:39:08 AM (UTC-06:00)...' -> segundos (None si no se puede leer)."""
+    m = re.match(r'^([a-z]+)\s+(\d{1,2})\s+(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s*([ap]m)', str(valor).strip().lower())
+    if not m:
+        return None
+    mes_abr, dia, anio, hh, mm, ss, ampm = m.groups()
+    mes = MESES_ES.get(mes_abr[:3])
+    if not mes:
+        return None
+    hh = int(hh) % 12 + (12 if ampm == 'pm' else 0)
+    return pd.Timestamp(int(anio), mes, int(dia), hh, int(mm), int(ss)).timestamp()
+
+
+def _norm_clave(v):
+    s = str(v).strip().lower()
+    try:
+        return str(int(float(s)))
+    except ValueError:
+        return s
+
+
+def quitar_reenvios(df):
+    """Un registro es reenvio accidental solo si coincide con otro ya conservado en todos
+    los campos de CLAVE_DEDUP Y fue enviado a menos de VENTANA_REENVIO_SEG segundos de
+    el (doble clic / doble envio). Mismos datos enviados minutos, horas o dias despues
+    se conservan como NCRs distintos (decision de la usuaria, 9 nov 2026)."""
+    conservados = {}
+    mantener = []
+    for _, row in df.iterrows():
+        clave = tuple(_norm_clave(row[c]) for c in CLAVE_DEDUP)
+        seg = _hora_a_segundos(row['hora_entrega'])
+        previos = conservados.setdefault(clave, [])
+        es_reenvio = bool(previos) and (
+            seg is None or any(p is None or abs(seg - p) <= VENTANA_REENVIO_SEG for p in previos))
+        if not es_reenvio:
+            previos.append(seg)
+        mantener.append(not es_reenvio)
+    return df[mantener]
+
+
 def load_and_clean(xlsx_path):
     xls = pd.ExcelFile(xlsx_path)
     sheet_name = 'Registro de No Conformidad-NCR' if 'Registro de No Conformidad-NCR' in xls.sheet_names else xls.sheet_names[0]
@@ -149,7 +193,7 @@ def load_and_clean(xlsx_path):
     df['proveedor'] = df['proveedor'].replace('Misma', 'Mimsa')
 
     before = len(df)
-    df = df.drop_duplicates(subset=['colector', 'ncr_num', 'razon', 'fecha', 'area', 'cantidad', 'parte'], keep='first')
+    df = quitar_reenvios(df)
     after = len(df)
     print(f"[generate_report] Filas antes de deduplicar: {before}, despues: {after}")
 
